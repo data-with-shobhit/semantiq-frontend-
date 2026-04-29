@@ -79,7 +79,11 @@ function DocRow({ doc, workspaceId }: { doc: Document; workspaceId: number }) {
               {active.reasoning && (
                 <div className="col-span-3 mt-4 pt-4 border-t border-white/10">
                   <p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-3">STRATEGY REASONING</p>
-                  <p className="font-mono text-sm text-white/70 leading-relaxed tracking-wide">{active.reasoning}</p>
+                  <p className="font-mono text-sm text-white/70 leading-relaxed tracking-wide">
+                    {active.reasoning.startsWith('LLM failed')
+                      ? 'Strategy auto-selected using heuristics (LLM unavailable at ingestion time)'
+                      : active.reasoning}
+                  </p>
                 </div>
               )}
             </div>
