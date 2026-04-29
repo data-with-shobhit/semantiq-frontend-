@@ -168,7 +168,7 @@ export default function LandingPage() {
         {/* Top navigation bar */}
         <nav className="relative z-20 flex justify-between items-start px-6 md:px-12 pt-8">
           <a 
-            href="#" 
+            href="https://github.com/data-with-shobhit/semantiq-backend" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-white/60 hover:text-white transition-colors"
