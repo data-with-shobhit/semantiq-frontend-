@@ -64,7 +64,13 @@ function StrategyCard({ strategy: s, onSaveName }: { strategy: any; onSaveName: 
         <div><p className="font-mono text-xs text-white/40 uppercase tracking-widest mb-2">OVERLAP</p><p className="font-mono text-sm text-white uppercase tracking-widest">{s.overlap}</p></div>
       </div>
 
-      {s.reasoning && <p className="font-mono text-xs text-white/60 mb-8 leading-relaxed tracking-wide line-clamp-3">{s.reasoning}</p>}
+      {s.reasoning && (
+        <p className="font-mono text-xs text-white/60 mb-8 leading-relaxed tracking-wide line-clamp-3">
+          {s.reasoning.startsWith('LLM failed')
+            ? 'Strategy auto-selected using heuristics (LLM unavailable at ingestion time)'
+            : s.reasoning}
+        </p>
+      )}
 
       {s.ragas_scores && (
         <div className="flex gap-8 mb-8 border-t border-white/10 pt-6">
