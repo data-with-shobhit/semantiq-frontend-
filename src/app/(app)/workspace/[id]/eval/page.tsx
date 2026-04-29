@@ -16,9 +16,7 @@ function ScoreBar({ value, label }: { value: number; label: string }) {
     <div className="border border-white/10 p-4">
       <div className="flex justify-between font-mono text-xs uppercase tracking-widest mb-3">
         <span className="text-white/50">{label}</span>
-        <span className="text-white">
-          {value.toFixed(2)}
-        </span>
+        <span className="text-white">{value.toFixed(3)}</span>
       </div>
       <div className="h-2 bg-white/5 overflow-hidden">
         <div className={cn('h-full transition-all', color)} style={{ width: `${value * 100}%` }} />
@@ -34,6 +32,8 @@ export default function EvalPage() {
   const [pairs, setPairs] = useState([{ q: '', gt: '' }]);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [reingesting, setReingesting] = useState(false);
+  const [feedback, setFeedback] = useState('');
 
   const { data: docsData } = useQuery({
     queryKey: ['docs', Number(id)],
@@ -83,6 +83,26 @@ export default function EvalPage() {
 
   const evalResult = result ?? currentEval;
 
+  const reingest = async () => {
+    if (!selectedDoc) return;
+    setReingesting(true);
+    try {
+      const res = await fetch(`${API}/eval/reingest/${selectedDoc}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_feedback: feedback || null }),
+      });
+      if (res.ok) {
+        toast.success('Re-ingestion queued with refined strategy');
+        setFeedback('');
+      } else {
+        const err = await res.json();
+        toast.error(err.detail ?? 'Re-ingest failed');
+      }
+    } catch { toast.error('Failed to reach server'); }
+    setReingesting(false);
+  };
+
   return (
     <div className="h-screen overflow-y-auto px-8 py-12 max-w-4xl mx-auto">
       <h1 className="font-display text-4xl text-white uppercase tracking-widest mb-12">RAGAS EVALUATION</h1>
@@ -104,15 +124,54 @@ export default function EvalPage() {
 
       {/* Current eval */}
       {evalResult && (
-        <div className="border border-white/20 p-8 mb-12 space-y-4">
-          <p className="font-mono text-xs text-red-500 uppercase tracking-widest mb-6">
+        <div className="border border-white/20 p-8 mb-12 space-y-8">
+          <p className="font-mono text-xs text-red-500 uppercase tracking-widest">
             {result ? 'LATEST RUN' : `RUN AT ${currentEval?.created_at?.slice(0, 19)}`}
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ScoreBar value={evalResult.faithfulness ?? 0} label="FAITHFULNESS" />
-            <ScoreBar value={evalResult.context_precision ?? 0} label="CONTEXT PRECISION" />
-            <ScoreBar value={evalResult.answer_relevance ?? 0} label="ANSWER RELEVANCY" />
-            <ScoreBar value={evalResult.avg_score ?? 0} label="AVG SCORE" />
+
+          {/* RAGAS scores */}
+          <div>
+            <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-4">RAGAS SCORES</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ScoreBar value={evalResult.faithfulness ?? 0} label="FAITHFULNESS" />
+              <ScoreBar value={evalResult.context_precision ?? 0} label="CONTEXT PRECISION" />
+              <ScoreBar value={evalResult.answer_relevance ?? 0} label="ANSWER RELEVANCY" />
+              <ScoreBar value={evalResult.avg_score ?? 0} label="AVG SCORE" />
+            </div>
+          </div>
+
+          {/* Retrieval metrics */}
+          {evalResult.retrieval_metrics && Object.keys(evalResult.retrieval_metrics).length > 0 && (
+            <div>
+              <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-4">RETRIEVAL METRICS</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(evalResult.retrieval_metrics as Record<string, number>).map(([key, val]) => (
+                  <ScoreBar key={key} value={val} label={key.replace(/_/g, ' ').toUpperCase()} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Re-ingest with refined strategy */}
+          <div className="border-t border-white/10 pt-8">
+            <p className="font-mono text-xs text-white/30 uppercase tracking-widest mb-4">RE-INGEST WITH REFINED STRATEGY</p>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              rows={2}
+              placeholder="OPTIONAL: DESCRIBE WHAT WAS WRONG (E.G. ANSWERS MISSING TABLE DATA)"
+              className="w-full bg-black border border-white/20 px-4 py-3 font-mono text-sm text-white placeholder:text-white/20 outline-none focus:border-red-500 resize-none transition-colors mb-4"
+            />
+            <button
+              onClick={reingest}
+              disabled={reingesting}
+              className="px-8 py-3 bg-white/10 text-white font-display uppercase tracking-widest text-sm border border-white/20 hover:bg-red-500 hover:border-red-500 disabled:opacity-30 transition-all"
+            >
+              {reingesting ? 'QUEUING…' : 'RE-INGEST WITH REFINED STRATEGY'}
+            </button>
+            <p className="font-mono text-xs text-white/30 mt-3">
+              RAGAS scores will be passed to LLM → new chunking strategy → doc re-embedded
+            </p>
           </div>
         </div>
       )}
